@@ -1,0 +1,834 @@
+// 全局變數
+let isNavMenuOpen = false;
+let currentSection = 'hero';
+let isScrolling = false;
+
+// DOM 元素選取
+const navbar = document.getElementById('navbar');
+const navToggle = document.getElementById('nav-toggle');
+const navMenu = document.getElementById('nav-menu');
+const backToTop = document.getElementById('back-to-top');
+const contactForm = document.getElementById('contact-form');
+const circleItems = document.querySelectorAll('.circle-item');
+
+// EmailJS 初始化
+(function() {
+    emailjs.init("user_YOUR_PUBLIC_KEY"); // 需要替換為實際的 EmailJS 公鑰
+})();
+
+// 導航欄滾動效果
+function handleNavbarScroll() {
+    if (window.scrollY > 100) {
+        navbar.classList.add('scrolled');
+    } else {
+        navbar.classList.remove('scrolled');
+    }
+}
+
+// 返回頂部按鈕顯示/隱藏
+function handleBackToTopVisibility() {
+    if (window.scrollY > 500) {
+        backToTop.classList.add('show');
+    } else {
+        backToTop.classList.remove('show');
+    }
+}
+
+// 當前區塊檢測
+function updateCurrentSection() {
+    const sections = ['hero', 'technology', 'subsidiaries', 'taiwan-analysis', 'cases', 'scenarios', 'advantages', 'contact'];
+    const scrollPosition = window.scrollY + 200;
+
+    for (let i = sections.length - 1; i >= 0; i--) {
+        const section = document.getElementById(sections[i]);
+        if (section && scrollPosition >= section.offsetTop) {
+            currentSection = sections[i];
+            updateActiveNavLink(sections[i]);
+            break;
+        }
+    }
+}
+
+// 更新導航欄活動連結
+function updateActiveNavLink(sectionId) {
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === `#${sectionId}`) {
+            link.classList.add('active');
+        }
+    });
+}
+
+// 滾動事件處理
+function handleScroll() {
+    if (isScrolling) return;
+    
+    isScrolling = true;
+    requestAnimationFrame(() => {
+        handleNavbarScroll();
+        handleBackToTopVisibility();
+        updateCurrentSection();
+        handleAOSAnimation();
+        isScrolling = false;
+    });
+}
+
+// 手機選單切換
+function toggleMobileMenu() {
+    isNavMenuOpen = !isNavMenuOpen;
+    navMenu.classList.toggle('active', isNavMenuOpen);
+    navToggle.classList.toggle('active', isNavMenuOpen);
+    
+    // 防止背景滾動
+    document.body.style.overflow = isNavMenuOpen ? 'hidden' : '';
+}
+
+// 平滑滾動到指定區塊
+function smoothScrollTo(targetId) {
+    const target = document.querySelector(targetId);
+    if (!target) return;
+    
+    const offsetTop = target.offsetTop - 80;
+    window.scrollTo({
+        top: offsetTop,
+        behavior: 'smooth'
+    });
+    
+    // 關閉手機選單
+    if (isNavMenuOpen) {
+        toggleMobileMenu();
+    }
+}
+
+// 導航連結點擊處理
+function setupNavigation() {
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('href');
+            smoothScrollTo(targetId);
+        });
+    });
+}
+
+// 技術圓圈互動效果
+function setupTechCircleInteractions() {
+    const subsidiariesData = [
+        { name: 'MEMS智能感測', company: 'CMC中光電智能感測', description: '壓阻式差壓感測器，±5 kPa超低壓力範圍' },
+        { name: 'AI決策平台', company: 'CiCS中光電智能雲服', description: 'LSTM神經網路預測，98%準確率' },
+        { name: '智慧物流調度', company: 'CiLS中光電智能物流', description: 'Smart Move升級計畫，3D視覺感知' },
+        { name: 'AMR自動執行', company: 'CIRC中光電智能機器人', description: '500kg搬運，±2cm定位精度' },
+        { name: 'AR視覺校正', company: 'CRI中光電創境', description: 'Snapdragon XR2 Gen 1平台' }
+    ];
+
+    circleItems.forEach((item, index) => {
+        // 懸停效果
+        item.addEventListener('mouseenter', () => {
+            // 高亮當前項目
+            item.style.transform = 'scale(1.15)';
+            item.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(192, 192, 192, 0.1))';
+            item.style.borderColor = 'rgba(192, 192, 192, 0.6)';
+            item.style.boxShadow = '0 0 30px rgba(192, 192, 192, 0.4)';
+            
+            // 暫停圓圈旋轉
+            const techCircle = document.querySelector('.tech-circle');
+            if (techCircle) {
+                techCircle.style.animationPlayState = 'paused';
+            }
+            
+            // 其他項目淡化
+            circleItems.forEach((otherItem, otherIndex) => {
+                if (otherIndex !== index) {
+                    otherItem.style.opacity = '0.5';
+                }
+            });
+            
+            // 顯示詳細資訊提示
+            if (subsidiariesData[index]) {
+                showTechTooltip(item, subsidiariesData[index], index);
+            }
+        });
+        
+        item.addEventListener('mouseleave', () => {
+            // 恢復原始狀態
+            item.style.transform = 'scale(1)';
+            item.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(192, 192, 192, 0.05))';
+            item.style.borderColor = 'rgba(192, 192, 192, 0.2)';
+            item.style.boxShadow = 'none';
+            
+            // 恢復圓圈旋轉
+            const techCircle = document.querySelector('.tech-circle');
+            if (techCircle) {
+                techCircle.style.animationPlayState = 'running';
+            }
+            
+            // 恢復其他項目透明度
+            circleItems.forEach(otherItem => {
+                otherItem.style.opacity = '1';
+            });
+            
+            // 隱藏提示
+            hideAllTooltips();
+        });
+        
+        // 點擊跳轉到子公司技術區塊
+        item.addEventListener('click', () => {
+            smoothScrollTo('#subsidiaries');
+            
+            // 延遲高亮對應的技術卡片
+            setTimeout(() => {
+                const techCards = document.querySelectorAll('.tech-card');
+                if (techCards[index]) {
+                    highlightTechCard(techCards[index], subsidiariesData[index]);
+                }
+            }, 800);
+        });
+    });
+}
+
+// 顯示技術提示
+function showTechTooltip(item, data, index) {
+    const tooltip = document.createElement('div');
+    tooltip.className = 'tech-tooltip';
+    tooltip.innerHTML = `
+        <div class="tooltip-content">
+            <h4>${data.name}</h4>
+            <p class="tooltip-company">${data.company}</p>
+            <p class="tooltip-desc">${data.description}</p>
+        </div>
+    `;
+    
+    // 樣式設定
+    Object.assign(tooltip.style, {
+        position: 'absolute',
+        top: '120%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        background: 'rgba(0, 26, 51, 0.95)',
+        border: '1px solid rgba(192, 192, 192, 0.3)',
+        borderRadius: '12px',
+        padding: '16px',
+        color: '#ffffff',
+        fontSize: '14px',
+        maxWidth: '250px',
+        zIndex: '1000',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+        backdropFilter: 'blur(10px)',
+        opacity: '0',
+        animation: 'tooltipFadeIn 0.3s ease forwards'
+    });
+    
+    item.appendChild(tooltip);
+}
+
+// 隱藏所有提示
+function hideAllTooltips() {
+    document.querySelectorAll('.tech-tooltip').forEach(tooltip => {
+        tooltip.style.animation = 'tooltipFadeOut 0.3s ease forwards';
+        setTimeout(() => {
+            if (tooltip.parentNode) {
+                tooltip.parentNode.removeChild(tooltip);
+            }
+        }, 300);
+    });
+}
+
+// 高亮技術卡片
+function highlightTechCard(card, data) {
+    card.style.transform = 'translateY(-20px) scale(1.05)';
+    card.style.background = 'rgba(255, 255, 255, 0.12)';
+    card.style.borderColor = 'rgba(192, 192, 192, 0.6)';
+    card.style.boxShadow = '0 20px 40px rgba(192, 192, 192, 0.2)';
+    
+    // 顯示通知
+    showNotification(`正在展示 ${data.name} - ${data.company}`, 'info');
+    
+    // 恢復狀態
+    setTimeout(() => {
+        card.style.transform = 'translateY(-10px) scale(1)';
+        card.style.background = 'rgba(255, 255, 255, 0.05)';
+        card.style.borderColor = 'rgba(192, 192, 192, 0.2)';
+        card.style.boxShadow = 'none';
+    }, 2000);
+}
+
+// 聯絡表單處理
+function setupContactForm() {
+    if (!contactForm) return;
+    
+    contactForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submit-btn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+        const formSuccess = document.getElementById('form-success');
+        const formError = document.getElementById('form-error');
+        
+        // 表單驗證
+        if (!validateForm()) {
+            showNotification('請填寫所有必填欄位並確認電子郵件格式正確', 'error');
+            return;
+        }
+        
+        // 顯示載入狀態
+        submitBtn.classList.add('loading');
+        submitBtn.disabled = true;
+        
+        // 獲取表單數據
+        const formData = new FormData(contactForm);
+        const templateParams = {
+            from_name: formData.get('name'),
+            from_company: formData.get('company'),
+            from_position: formData.get('position') || '未提供',
+            from_phone: formData.get('phone') || '未提供',
+            from_email: formData.get('email'),
+            inquiry_type: formData.get('inquiry_type'),
+            message: formData.get('message'),
+            to_email: 'benny0958806599@gmail.com',
+            reply_to: formData.get('email'),
+            timestamp: new Date().toLocaleString('zh-TW')
+        };
+        
+        try {
+            // 模擬發送 (實際使用時需要配置 EmailJS)
+            await simulateEmailSend(templateParams);
+            
+            // 成功處理
+            contactForm.classList.add('hidden');
+            formSuccess.classList.remove('hidden');
+            showNotification('諮詢已成功發送！我們將在24小時內回覆您。', 'success');
+            
+            // 3秒後重置表單
+            setTimeout(() => {
+                resetContactForm();
+            }, 3000);
+            
+        } catch (error) {
+            // 錯誤處理
+            console.error('表單發送失敗:', error);
+            formError.classList.remove('hidden');
+            showNotification('發送失敗，請稍後再試或直接聯絡 benny0958806599@gmail.com', 'error');
+            
+            setTimeout(() => {
+                formError.classList.add('hidden');
+                resetSubmitButton();
+            }, 3000);
+        }
+    });
+}
+
+// 模擬郵件發送
+function simulateEmailSend(params) {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            // 90% 成功率模擬
+            if (Math.random() > 0.1) {
+                console.log('模擬郵件發送成功:', params);
+                resolve({ status: 200, text: 'OK' });
+            } else {
+                reject(new Error('模擬網路錯誤'));
+            }
+        }, 2000);
+    });
+}
+
+// 表單驗證
+function validateForm() {
+    const requiredFields = ['name', 'company', 'email', 'inquiry-type', 'message'];
+    let isValid = true;
+    
+    requiredFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (!field || !field.value.trim()) {
+            if (field) {
+                field.style.borderColor = '#f87171';
+                field.style.boxShadow = '0 0 0 3px rgba(248, 113, 113, 0.1)';
+            }
+            isValid = false;
+        } else {
+            field.style.borderColor = 'rgba(192, 192, 192, 0.2)';
+            field.style.boxShadow = 'none';
+        }
+    });
+    
+    // 電子郵件格式驗證
+    const emailField = document.getElementById('email');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (emailField && emailField.value && !emailRegex.test(emailField.value)) {
+        emailField.style.borderColor = '#f87171';
+        emailField.style.boxShadow = '0 0 0 3px rgba(248, 113, 113, 0.1)';
+        isValid = false;
+    }
+    
+    return isValid;
+}
+
+// 重置聯絡表單
+function resetContactForm() {
+    const formSuccess = document.getElementById('form-success');
+    const formError = document.getElementById('form-error');
+    
+    formSuccess.classList.add('hidden');
+    formError.classList.add('hidden');
+    contactForm.classList.remove('hidden');
+    contactForm.reset();
+    resetSubmitButton();
+}
+
+// 重置提交按鈕
+function resetSubmitButton() {
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.classList.remove('loading');
+    submitBtn.disabled = false;
+}
+
+// 即時表單驗證
+function setupFormValidation() {
+    const formFields = document.querySelectorAll('.form-control');
+    formFields.forEach(field => {
+        field.addEventListener('input', () => {
+            if (field.hasAttribute('required') && field.value.trim()) {
+                field.style.borderColor = 'rgba(192, 192, 192, 0.2)';
+                field.style.boxShadow = 'none';
+            }
+            
+            // 電子郵件即時驗證
+            if (field.type === 'email' && field.value) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (emailRegex.test(field.value)) {
+                    field.style.borderColor = '#4ade80';
+                } else {
+                    field.style.borderColor = '#f87171';
+                }
+            }
+        });
+        
+        field.addEventListener('focus', () => {
+            field.style.borderColor = 'rgba(192, 192, 192, 0.4)';
+        });
+        
+        field.addEventListener('blur', () => {
+            if (!field.value.trim() && field.hasAttribute('required')) {
+                field.style.borderColor = '#f87171';
+            } else {
+                field.style.borderColor = 'rgba(192, 192, 192, 0.2)';
+            }
+        });
+    });
+}
+
+// AOS 動畫實現
+function handleAOSAnimation() {
+    const aosElements = document.querySelectorAll('[data-aos]');
+    
+    aosElements.forEach(element => {
+        const elementTop = element.getBoundingClientRect().top;
+        const elementVisible = 150;
+        
+        if (elementTop < window.innerHeight - elementVisible) {
+            element.classList.add('aos-animate');
+        }
+    });
+}
+
+// 統計數字動畫
+function animateCounters() {
+    const counters = document.querySelectorAll('.stat-number');
+    
+    const animateCounter = (counter) => {
+        const target = counter.textContent.replace(/[^\d.]/g, '');
+        const isDecimal = target.includes('.');
+        const numericTarget = parseFloat(target);
+        
+        if (isNaN(numericTarget)) return;
+        
+        const increment = numericTarget / 100;
+        let current = 0;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= numericTarget) {
+                counter.textContent = counter.textContent.replace(/[\d.,]+/, 
+                    isDecimal ? numericTarget.toFixed(1) : numericTarget.toLocaleString());
+                clearInterval(timer);
+            } else {
+                const displayValue = isDecimal ? current.toFixed(1) : Math.floor(current).toLocaleString();
+                counter.textContent = counter.textContent.replace(/[\d.,]+/, displayValue);
+            }
+        }, 30);
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                animateCounter(entry.target);
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.5 });
+    
+    counters.forEach(counter => {
+        observer.observe(counter);
+    });
+}
+
+// 通知系統
+function showNotification(message, type = 'info') {
+    // 移除現有通知
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notification => {
+        notification.remove();
+    });
+    
+    const notification = document.createElement('div');
+    notification.className = `notification notification--${type}`;
+    
+    const colors = {
+        success: 'linear-gradient(135deg, #4ade80, #22c55e)',
+        error: 'linear-gradient(135deg, #f87171, #ef4444)',
+        info: 'linear-gradient(135deg, #60a5fa, #3b82f6)',
+        warning: 'linear-gradient(135deg, #fbbf24, #f59e0b)'
+    };
+    
+    Object.assign(notification.style, {
+        position: 'fixed',
+        top: '100px',
+        right: '2rem',
+        padding: '1rem 1.5rem',
+        borderRadius: '12px',
+        color: '#ffffff',
+        fontWeight: '600',
+        fontSize: '14px',
+        zIndex: '10000',
+        transform: 'translateX(400px)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        minWidth: '300px',
+        maxWidth: '400px',
+        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+        background: colors[type] || colors.info,
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)'
+    });
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // 動畫顯示
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // 自動移除
+    setTimeout(() => {
+        notification.style.transform = 'translateX(400px)';
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 4000);
+}
+
+// 卡片懸停效果增強
+function enhanceCardEffects() {
+    const cards = document.querySelectorAll('.tech-card, .case-card, .analysis-card, .scenario-card, .advantage-card');
+    
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', () => {
+            card.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            card.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        });
+        
+        // 點擊波紋效果
+        card.addEventListener('click', (e) => {
+            const ripple = document.createElement('div');
+            const rect = card.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            
+            Object.assign(ripple.style, {
+                position: 'absolute',
+                width: `${size}px`,
+                height: `${size}px`,
+                left: `${x}px`,
+                top: `${y}px`,
+                background: 'rgba(192, 192, 192, 0.3)',
+                borderRadius: '50%',
+                transform: 'scale(0)',
+                animation: 'ripple 0.6s linear',
+                pointerEvents: 'none'
+            });
+            
+            card.style.position = 'relative';
+            card.style.overflow = 'hidden';
+            card.appendChild(ripple);
+            
+            setTimeout(() => {
+                if (ripple.parentNode) {
+                    ripple.parentNode.removeChild(ripple);
+                }
+            }, 600);
+        });
+    });
+}
+
+// 滾動進度條
+function createScrollProgress() {
+    const progressBar = document.createElement('div');
+    progressBar.id = 'scroll-progress';
+    Object.assign(progressBar.style, {
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '0%',
+        height: '3px',
+        background: 'linear-gradient(90deg, rgba(192, 192, 192, 1), rgba(77, 166, 255, 1))',
+        zIndex: '10000',
+        transition: 'width 0.1s ease'
+    });
+    document.body.appendChild(progressBar);
+    
+    function updateProgress() {
+        const scrollTop = window.pageYOffset;
+        const docHeight = document.body.scrollHeight - window.innerHeight;
+        const scrollPercent = Math.min((scrollTop / docHeight) * 100, 100);
+        progressBar.style.width = `${scrollPercent}%`;
+    }
+    
+    window.addEventListener('scroll', updateProgress);
+}
+
+// 視差滾動效果
+function setupParallaxEffects() {
+    const parallaxElements = document.querySelectorAll('.hero::before, .tech-circle');
+    
+    function updateParallax() {
+        const scrolled = window.pageYOffset;
+        const rate = scrolled * -0.5;
+        
+        parallaxElements.forEach(element => {
+            if (element.classList.contains('tech-circle')) {
+                element.style.transform = `translateY(${rate * 0.1}px)`;
+            }
+        });
+    }
+    
+    window.addEventListener('scroll', updateParallax);
+}
+
+// 鍵盤導航支援
+function setupKeyboardNavigation() {
+    document.addEventListener('keydown', (e) => {
+        // ESC 鍵關閉手機選單
+        if (e.key === 'Escape' && isNavMenuOpen) {
+            toggleMobileMenu();
+        }
+        
+        // 空格鍵或Enter鍵返回頂部（當返回頂部按鈕獲得焦點時）
+        if ((e.key === ' ' || e.key === 'Enter') && document.activeElement === backToTop) {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // 方向鍵在技術圓圈間導航
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            const focusedCircle = document.activeElement;
+            if (focusedCircle && focusedCircle.classList.contains('circle-item')) {
+                e.preventDefault();
+                const circles = Array.from(circleItems);
+                const currentIndex = circles.indexOf(focusedCircle);
+                let nextIndex;
+                
+                if (e.key === 'ArrowLeft') {
+                    nextIndex = currentIndex > 0 ? currentIndex - 1 : circles.length - 1;
+                } else {
+                    nextIndex = currentIndex < circles.length - 1 ? currentIndex + 1 : 0;
+                }
+                
+                circles[nextIndex].focus();
+            }
+        }
+    });
+}
+
+// 性能優化：防抖函數
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// 懶加載圖片
+function setupLazyLoading() {
+    const images = document.querySelectorAll('img[data-src]');
+    
+    const imageObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.src = img.dataset.src;
+                img.classList.remove('lazy');
+                imageObserver.unobserve(img);
+            }
+        });
+    });
+    
+    images.forEach(img => imageObserver.observe(img));
+}
+
+// 添加必要的 CSS 動畫
+function addDynamicStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes tooltipFadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        
+        @keyframes tooltipFadeOut {
+            from { opacity: 1; transform: translateX(-50%) translateY(0); }
+            to { opacity: 0; transform: translateX(-50%) translateY(10px); }
+        }
+        
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        .nav-link.active {
+            color: rgba(192, 192, 192, 1);
+        }
+        
+        .nav-link.active::after {
+            width: 100%;
+        }
+        
+        .circle-item {
+            outline: none;
+        }
+        
+        .circle-item:focus {
+            outline: 2px solid rgba(192, 192, 192, 0.6);
+            outline-offset: 4px;
+        }
+        
+        .lazy {
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .lazy.loaded {
+            opacity: 1;
+        }
+        
+        .notification {
+            animation: slideInRight 0.3s ease;
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// 初始化所有功能
+function initializeApp() {
+    console.log('🚀 中強光電智慧補貨系統載入中...');
+    
+    // 基礎功能初始化
+    setupNavigation();
+    setupTechCircleInteractions();
+    setupContactForm();
+    setupFormValidation();
+    enhanceCardEffects();
+    setupKeyboardNavigation();
+    
+    // 視覺效果初始化
+    createScrollProgress();
+    setupParallaxEffects();
+    animateCounters();
+    setupLazyLoading();
+    addDynamicStyles();
+    
+    // 事件監聽器
+    window.addEventListener('scroll', debounce(handleScroll, 10));
+    window.addEventListener('resize', debounce(() => {
+        if (window.innerWidth > 768 && isNavMenuOpen) {
+            toggleMobileMenu();
+        }
+    }, 250));
+    
+    // 導航切換
+    navToggle.addEventListener('click', toggleMobileMenu);
+    
+    // 返回頂部
+    backToTop.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    
+    // 初始化 AOS 動畫
+    handleAOSAnimation();
+    
+    // 處理 URL 錨點
+    if (window.location.hash) {
+        setTimeout(() => {
+            smoothScrollTo(window.location.hash);
+        }, 100);
+    }
+    
+    // 頁面載入完成動畫
+    document.body.style.opacity = '0';
+    document.body.style.transition = 'opacity 0.5s ease';
+    
+    setTimeout(() => {
+        document.body.style.opacity = '1';
+        
+        // 顯示歡迎訊息
+        setTimeout(() => {
+            showNotification('歡迎來到中強光電智慧補貨閉環系統！', 'info');
+        }, 1000);
+    }, 100);
+    
+    console.log('✅ 系統初始化完成');
+}
+
+// 錯誤處理
+window.addEventListener('error', (e) => {
+    console.error('頁面錯誤:', e.error);
+    showNotification('系統發生錯誤，部分功能可能受影響', 'error');
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('未處理的 Promise 錯誤:', e.reason);
+    showNotification('網路連線可能有問題，請稍後再試', 'warning');
+});
+
+// 頁面載入完成後初始化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
+}
+
+// 導出主要函數供外部使用
+window.SmartReplenishment = {
+    showNotification,
+    smoothScrollTo,
+    toggleMobileMenu
+};
