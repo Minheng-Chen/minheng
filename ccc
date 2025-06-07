@@ -1,0 +1,248 @@
+/* ------------------------------------------------------------------
+   Smart Replenishment – app.js  ★2025-05-09 完整修正版
+   1. 修復技術圓圈 (.circle-item) hover / scale 跑版
+   2. EmailJS 真實寄信；若未設定則自動 fallback 到模擬發送
+   3. 其餘功能與動畫保持原樣
+------------------------------------------------------------------ */
+
+/* --------- [A] 全局狀態 --------- */
+let isNavMenuOpen = false;
+let currentSection = 'hero';
+let isScrolling = false;
+
+/* --------- [B] DOM 選取 --------- */
+const navbar      = document.getElementById('navbar');
+const navToggle   = document.getElementById('nav-toggle');
+const navMenu     = document.getElementById('nav-menu');
+const backToTop   = document.getElementById('back-to-top');
+const contactForm = document.getElementById('contact-form');
+const circleItems = document.querySelectorAll('.circle-item');
+
+/* --------- [C] EmailJS 初始化 --------- */
+const EMAIL_SERVICE_ID   = 'YOUR_SERVICE_ID';    // <-- TODO
+const EMAIL_TEMPLATE_ID  = 'YOUR_TEMPLATE_ID';   // <-- TODO
+const EMAIL_PUBLIC_KEY   = 'YOUR_PUBLIC_KEY';    // <-- TODO
+const EMAIL_ENABLED      = EMAIL_SERVICE_ID !== 'YOUR_SERVICE_ID'; // 簡易判斷
+
+(function () {
+  /* global emailjs */
+  if (EMAIL_ENABLED && window.emailjs) {
+    emailjs.init(EMAIL_PUBLIC_KEY);
+    console.info('✅ EmailJS 初始化完成');
+  } else {
+    console.warn('⚠️ 尚未配置 EmailJS，將使用模擬寄信');
+  }
+})();
+
+/* --------- [D] 捲動、導航、返回頂部 --------- */
+function handleNavbarScroll() {
+  navbar.classList.toggle('scrolled', window.scrollY > 100);
+}
+
+function handleBackToTopVisibility() {
+  backToTop.classList.toggle('show', window.scrollY > 500);
+}
+
+function updateCurrentSection() {
+  const sections = [
+    'hero','technology','subsidiaries','taiwan-analysis',
+    'cases','scenarios','advantages','contact'
+  ];
+  const pos = window.scrollY + 200;
+  for (let i = sections.length - 1; i >= 0; i--) {
+    const s = document.getElementById(sections[i]);
+    if (s && pos >= s.offsetTop) {
+      currentSection = sections[i];
+      document
+        .querySelectorAll('.nav-link')
+        .forEach(a => a.classList.toggle('active', a.getAttribute('href') === `#${s.id}`));
+      break;
+    }
+  }
+}
+
+function handleScroll() {
+  if (isScrolling) return;
+  isScrolling = true;
+  requestAnimationFrame(() => {
+    handleNavbarScroll();
+    handleBackToTopVisibility();
+    updateCurrentSection();
+    handleAOSAnimation();
+    isScrolling = false;
+  });
+}
+
+function toggleMobileMenu() {
+  isNavMenuOpen = !isNavMenuOpen;
+  navMenu.classList.toggle('active', isNavMenuOpen);
+  navToggle.classList.toggle('active', isNavMenuOpen);
+  document.body.style.overflow = isNavMenuOpen ? 'hidden' : '';
+}
+
+function smoothScrollTo(hash) {
+  const target = document.querySelector(hash);
+  if (!target) return;
+  window.scrollTo({ top: target.offsetTop - 80, behavior: 'smooth' });
+  if (isNavMenuOpen) toggleMobileMenu();
+}
+
+function setupNavigation() {
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      smoothScrollTo(link.getAttribute('href'));
+    });
+  });
+}
+
+/* --------- [E] 圓圈互動（跑版修補已整合） --------- */
+function setupTechCircleInteractions() {
+  const subsidiaries = [
+    { name:'MEMS智能感測', company:'CMC',  description:'壓阻式差壓感測器 ±5 kPa' },
+    { name:'AI決策平台',   company:'CiCS', description:'LSTM 預測 98% 準確率' },
+    { name:'智慧物流調度', company:'CiLS', description:'Smart Move 3D 感知' },
+    { name:'AMR自動執行',  company:'CIRC', description:'500 kg ±2 cm' },
+    { name:'AR視覺校正',  company:'CRI',  description:'Snapdragon XR2' }
+  ];
+  circleItems.forEach((item, idx) => {
+    item.style.width = item.style.height = '100px';          // 固定大小
+    item.style.borderRadius = '50%';
+    item.style.transformOrigin = 'center';                   // 避免 scale 偏移
+    item.addEventListener('mouseenter', () => {
+      circleItems.forEach(o => (o.style.opacity = o === item ? '1' : '0.5'));
+      item.style.transform = 'scale(1.15)';
+      document.querySelector('.tech-circle').style.animationPlayState = 'paused';
+      showTechTooltip(item, subsidiaries[idx]);
+    });
+    item.addEventListener('mouseleave', () => {
+      circleItems.forEach(o => (o.style.opacity = '1'));
+      item.style.transform = 'scale(1)';
+      document.querySelector('.tech-circle').style.animationPlayState = 'running';
+      hideAllTooltips();
+    });
+    item.addEventListener('click', () => {
+      smoothScrollTo('#subsidiaries');
+      setTimeout(() => {
+        const cards = document.querySelectorAll('.tech-card');
+        cards[idx]?.scrollIntoView({ behavior:'smooth', block:'center' });
+        highlightTechCard(cards[idx], subsidiaries[idx]);
+      }, 800);
+    });
+  });
+}
+
+/* --------- [F] Email 表單處理 --------- */
+function setupContactForm() {
+  if (!contactForm) return;
+  contactForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!validateForm()) {
+      showNotification('請填寫所有必填欄位並確認電郵格式', 'error');
+      return;
+    }
+
+    const submitBtn   = document.getElementById('submit-btn');
+    submitBtn.classList.add('loading');
+    submitBtn.disabled = true;
+
+    const fd = new FormData(contactForm);
+    const params = {
+      from_name    : fd.get('name'),
+      from_company : fd.get('company'),
+      from_position: fd.get('position') || '未提供',
+      from_phone   : fd.get('phone')    || '未提供',
+      from_email   : fd.get('email'),
+      inquiry_type : fd.get('inquiry_type'),
+      message      : fd.get('message'),
+      timestamp    : new Date().toLocaleString('zh-TW')
+    };
+
+    try {
+      if (EMAIL_ENABLED) {
+        await emailjs.send(EMAIL_SERVICE_ID, EMAIL_TEMPLATE_ID, params, EMAIL_PUBLIC_KEY);
+      } else {
+        await simulateEmailSend(params); // fallback
+      }
+      contactForm.classList.add('hidden');
+      document.getElementById('form-success').classList.remove('hidden');
+      showNotification('已成功送出！我們將盡快回覆。', 'success');
+      setTimeout(resetContactForm, 3000);
+    } catch (err) {
+      console.error(err);
+      document.getElementById('form-error').classList.remove('hidden');
+      showNotification('發送失敗，請稍後再試。', 'error');
+      setTimeout(() => {
+        document.getElementById('form-error').classList.add('hidden');
+        resetSubmitButton();
+      }, 3000);
+    }
+  });
+}
+
+function simulateEmailSend(params) {
+  return new Promise((res, rej) =>
+    setTimeout(() => (Math.random() > 0.1 ? res() : rej(new Error('Simulated error'))), 1200)
+  );
+}
+
+function validateForm() {
+  const required = ['name','company','email','inquiry-type','message'];
+  let ok = true;
+  required.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || !el.value.trim()) {
+      ok = false;
+      el && (el.style.borderColor = '#f87171');
+    }
+  });
+  const email = document.getElementById('email');
+  const r = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (email && !r.test(email.value)) ok = false;
+  return ok;
+}
+function resetContactForm() {
+  document.getElementById('form-success').classList.add('hidden');
+  contactForm.classList.remove('hidden');
+  contactForm.reset();
+  resetSubmitButton();
+}
+function resetSubmitButton() {
+  const btn = document.getElementById('submit-btn');
+  btn.classList.remove('loading');
+  btn.disabled = false;
+}
+
+/* --------- [G] 其他視覺、通知等原始函式（保持不變） --------- */
+/*  …… 你原先的函式：showNotification, handleAOSAnimation, addDynamicStyles,
+       enhanceCardEffects, animateCounters, createScrollProgress, 
+       setupFormValidation, setupKeyboardNavigation, debounce, etc.
+       （這些內容已在你的原檔中，請直接保留）                         */
+
+/* --------- [H] 初始化 --------- */
+function initializeApp() {
+  setupNavigation();
+  setupTechCircleInteractions();
+  setupContactForm();
+  setupFormValidation();
+  enhanceCardEffects();
+  setupKeyboardNavigation();
+  // 其餘初始化保持原樣 …
+  createScrollProgress();
+  animateCounters();
+  addDynamicStyles();
+  window.addEventListener('scroll', debounce(handleScroll, 10));
+  navToggle.addEventListener('click', toggleMobileMenu);
+  backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior:'smooth' }));
+  console.log('🚀 App 初始完成');
+}
+document.readyState === 'loading'
+  ? document.addEventListener('DOMContentLoaded', initializeApp)
+  : initializeApp();
+
+/* ------------------------------------------------------------------
+   ▸ CSS 追加（可放入 CSS 檔或 <style>）
+.circle-item { width:100px;height:100px;border-radius:50%;
+               transform-origin:center;flex-shrink:0;position:relative;}
+.tech-circle { display:flex;flex-wrap:wrap;gap:24px;justify-content:center;}
+------------------------------------------------------------------ */
